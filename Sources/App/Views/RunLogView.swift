@@ -37,55 +37,48 @@ struct RunLogView: View {
             statusIcon(run.status)
 
             if run.status == .running {
+                // Only running jobs get a live counter
                 Text(run.startedAt, style: .relative)
                 ProgressView()
                     .controlSize(.mini)
-            } else if let finished = run.finishedAt {
-                let duration = Int(finished.timeIntervalSince(run.startedAt))
-                if duration > 2 {
-                    // Real duration (direct process execution)
-                    Text(formatDuration(duration))
-                }
-                // When it ran
-                Text(run.startedAt, style: .relative)
-                    .foregroundStyle(.secondary)
-                Text("ago")
-                    .foregroundStyle(.tertiary)
             } else {
-                Text(run.startedAt, style: .relative)
-            }
-
-            if let code = run.exitCode, code != 0 {
-                Text("exit \(code)")
-                    .foregroundStyle(.red)
+                // Completed: static timestamp, no live counting
+                Text(formatTimestamp(run.startedAt))
+                    .foregroundStyle(.secondary)
+                if let code = run.exitCode, code != 0 {
+                    Text("exit \(code)")
+                        .foregroundStyle(.red)
+                }
             }
         }
     }
 
-    private func formatDuration(_ seconds: Int) -> String {
-        if seconds < 60 {
-            return "\(seconds)s"
-        } else if seconds < 3600 {
-            let m = seconds / 60
-            let s = seconds % 60
-            return s > 0 ? "\(m)m \(s)s" : "\(m)m"
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short // "10:30 AM"
+        return f
+    }()
+
+    private static let dateTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, h:mm a" // "Mar 25, 10:30 AM"
+        return f
+    }()
+
+    private func formatTimestamp(_ date: Date) -> String {
+        if Calendar.current.isDateInToday(date) {
+            return Self.timeFormatter.string(from: date)
         } else {
-            let h = seconds / 3600
-            let m = (seconds % 3600) / 60
-            return m > 0 ? "\(h)h \(m)m" : "\(h)h"
+            return Self.dateTimeFormatter.string(from: date)
         }
-    }
-
-    /// Is this the most recent run for this job?
-    private func isLatestRun(_ run: JobRun) -> Bool {
-        runs.first?.id == run.id
     }
 
     @ViewBuilder
     private func runDetail(_ run: JobRun) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            // Session attach button — only on the latest run with a session
-            if run.output.contains("session:"), isLatestRun(run) {
+            // Session attach button — only on actively running sessions
+            if run.status == .running, run.output.contains("session:") {
                 HStack(spacing: 6) {
                     Text(run.output)
                         .font(.system(.caption2, design: .monospaced))
