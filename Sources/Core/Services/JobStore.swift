@@ -8,6 +8,7 @@ public final class JobStore: ObservableObject {
 
     private let jobsURL: URL
     private let runsURL: URL
+    public let directory: URL
 
     public init() {
         let appSupport = FileManager.default.urls(
@@ -15,6 +16,16 @@ public final class JobStore: ObservableObject {
         ).first!
         let dir = appSupport.appendingPathComponent("SimpleHeartbeat")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        directory = dir
+        jobsURL = dir.appendingPathComponent("jobs.json")
+        runsURL = dir.appendingPathComponent("runs.json")
+        load()
+    }
+
+    /// Test-friendly initializer with custom directory.
+    public init(directory dir: URL) {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        directory = dir
         jobsURL = dir.appendingPathComponent("jobs.json")
         runsURL = dir.appendingPathComponent("runs.json")
         load()
