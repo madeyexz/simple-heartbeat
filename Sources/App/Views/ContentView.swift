@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var showingNewJob = false
     @State private var showingImport = false
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.closePopover) private var closePopover
 
     var body: some View {
         VStack(spacing: 0) {
@@ -108,7 +109,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
             Spacer()
 
-            Button(action: { openSettings() }) {
+            Button(action: { closePopover(); openSettings() }) {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.plain)
