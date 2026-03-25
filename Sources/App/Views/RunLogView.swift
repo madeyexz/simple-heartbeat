@@ -1,4 +1,5 @@
 import SwiftUI
+import HeartbeatCore
 
 struct RunLogView: View {
     let jobId: UUID

@@ -1,12 +1,14 @@
 import Foundation
 
-struct ClaudeAgent: AgentProvider {
-    let id = "claude"
-    let name = "Claude Code"
-    let iconName = "brain.head.profile"
-    let description = "Anthropic's Claude Code CLI"
+public struct ClaudeAgent: AgentProvider {
+    public let id = "claude"
+    public let name = "Claude Code"
+    public let iconName = "brain.head.profile"
+    public let description = "Anthropic's Claude Code CLI"
 
-    var availableOptions: [AgentOption] {
+    public init() {}
+
+    public var availableOptions: [AgentOption] {
         [
             AgentOption(
                 key: "model", label: "Model",
@@ -41,7 +43,7 @@ struct ClaudeAgent: AgentProvider {
         ]
     }
 
-    func buildCommand(prompt: String, options: [String: String], workingDirectory: String) -> AgentCommand {
+    public func buildCommand(prompt: String, options: [String: String], workingDirectory: String) -> AgentCommand {
         var args = ["--print"] // non-interactive print mode
 
         if let model = options["model"], !model.isEmpty {

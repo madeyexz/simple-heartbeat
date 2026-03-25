@@ -2,14 +2,14 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class JobStore: ObservableObject {
-    @Published var jobs: [HeartbeatJob] = []
-    @Published var runs: [JobRun] = []
+public final class JobStore: ObservableObject {
+    @Published public var jobs: [HeartbeatJob] = []
+    @Published public var runs: [JobRun] = []
 
     private let jobsURL: URL
     private let runsURL: URL
 
-    init() {
+    public init() {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first!
@@ -47,45 +47,45 @@ final class JobStore: ObservableObject {
         }
     }
 
-    func add(_ job: HeartbeatJob) {
+    public func add(_ job: HeartbeatJob) {
         jobs.append(job)
         save()
     }
 
-    func update(_ job: HeartbeatJob) {
+    public func update(_ job: HeartbeatJob) {
         if let i = jobs.firstIndex(where: { $0.id == job.id }) {
             jobs[i] = job
             save()
         }
     }
 
-    func delete(_ job: HeartbeatJob) {
+    public func delete(_ job: HeartbeatJob) {
         jobs.removeAll { $0.id == job.id }
         runs.removeAll { $0.jobId == job.id }
         save()
     }
 
-    func toggleEnabled(_ job: HeartbeatJob) {
+    public func toggleEnabled(_ job: HeartbeatJob) {
         if let i = jobs.firstIndex(where: { $0.id == job.id }) {
             jobs[i].isEnabled.toggle()
             save()
         }
     }
 
-    func addRun(_ run: JobRun) {
+    public func addRun(_ run: JobRun) {
         runs.append(run)
         if runs.count > 100 { runs = Array(runs.suffix(100)) }
         save()
     }
 
-    func updateRun(_ run: JobRun) {
+    public func updateRun(_ run: JobRun) {
         if let i = runs.firstIndex(where: { $0.id == run.id }) {
             runs[i] = run
             save()
         }
     }
 
-    func runsForJob(_ jobId: UUID) -> [JobRun] {
+    public func runsForJob(_ jobId: UUID) -> [JobRun] {
         runs.filter { $0.jobId == jobId }.sorted { $0.startedAt > $1.startedAt }
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// Normalized abstraction for AI agent backends.
 /// Conform to this protocol to add a new agent (e.g. Gemini, local Ollama, etc.)
-protocol AgentProvider {
+public protocol AgentProvider {
     var id: String { get }
     var name: String { get }
     var iconName: String { get }
@@ -17,7 +17,12 @@ protocol AgentProvider {
     ) -> AgentCommand
 }
 
-struct AgentCommand {
-    let executable: String
-    let arguments: [String]
+public struct AgentCommand {
+    public let executable: String
+    public let arguments: [String]
+
+    public init(executable: String, arguments: [String]) {
+        self.executable = executable
+        self.arguments = arguments
+    }
 }

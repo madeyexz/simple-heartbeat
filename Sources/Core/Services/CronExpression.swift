@@ -1,13 +1,13 @@
 import Foundation
 
-struct CronExpression {
-    let minute: CronField
-    let hour: CronField
-    let dayOfMonth: CronField
-    let month: CronField
-    let dayOfWeek: CronField
+public struct CronExpression {
+    public let minute: CronField
+    public let hour: CronField
+    public let dayOfMonth: CronField
+    public let month: CronField
+    public let dayOfWeek: CronField
 
-    init?(from string: String) {
+    public init?(from string: String) {
         let parts = string.trimmingCharacters(in: .whitespaces).split(separator: " ")
         guard parts.count == 5 else { return nil }
 
@@ -21,7 +21,7 @@ struct CronExpression {
         minute = m; hour = h; dayOfMonth = dom; month = mo; dayOfWeek = dow
     }
 
-    func matches(date: Date) -> Bool {
+    public func matches(date: Date) -> Bool {
         let cal = Calendar.current
         let c = cal.dateComponents([.minute, .hour, .day, .month, .weekday], from: date)
         guard let min = c.minute, let hr = c.hour,
@@ -34,7 +34,7 @@ struct CronExpression {
             && dayOfWeek.matches(cronWeekday)
     }
 
-    var humanReadable: String {
+    public var humanReadable: String {
         let p = [minute.raw, hour.raw, dayOfMonth.raw, month.raw, dayOfWeek.raw]
 
         if p.allSatisfy({ $0 == "*" }) { return "Every minute" }
@@ -72,11 +72,11 @@ struct CronExpression {
     }
 }
 
-struct CronField {
-    let values: Set<Int>
-    let raw: String
+public struct CronField {
+    public let values: Set<Int>
+    public let raw: String
 
-    init?(_ string: String, range: ClosedRange<Int>) {
+    public init?(_ string: String, range: ClosedRange<Int>) {
         raw = string
         var result = Set<Int>()
         for part in string.split(separator: ",") {
@@ -92,10 +92,10 @@ struct CronField {
                 let bounds = s.split(separator: "-")
                 guard bounds.count == 2,
                       let lo = Int(bounds[0]), let hi = Int(bounds[1]),
-                      lo <= hi
+                      lo <= hi, range.contains(lo), range.contains(hi)
                 else { return nil }
                 result.formUnion(lo...hi)
-            } else if let v = Int(s) {
+            } else if let v = Int(s), range.contains(v) {
                 result.insert(v)
             } else {
                 return nil
@@ -104,7 +104,7 @@ struct CronField {
         values = result
     }
 
-    func matches(_ value: Int) -> Bool {
+    public func matches(_ value: Int) -> Bool {
         values.contains(value)
     }
 }

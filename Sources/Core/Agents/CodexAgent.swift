@@ -1,12 +1,14 @@
 import Foundation
 
-struct CodexAgent: AgentProvider {
-    let id = "codex"
-    let name = "Codex"
-    let iconName = "chevron.left.forwardslash.chevron.right"
-    let description = "OpenAI's Codex CLI"
+public struct CodexAgent: AgentProvider {
+    public let id = "codex"
+    public let name = "Codex"
+    public let iconName = "chevron.left.forwardslash.chevron.right"
+    public let description = "OpenAI's Codex CLI"
 
-    var availableOptions: [AgentOption] {
+    public init() {}
+
+    public var availableOptions: [AgentOption] {
         [
             AgentOption(
                 key: "model", label: "Model",
@@ -41,7 +43,7 @@ struct CodexAgent: AgentProvider {
         ]
     }
 
-    func buildCommand(prompt: String, options: [String: String], workingDirectory: String) -> AgentCommand {
+    public func buildCommand(prompt: String, options: [String: String], workingDirectory: String) -> AgentCommand {
         var args = ["exec"] // non-interactive exec subcommand
 
         if let model = options["model"], !model.isEmpty {

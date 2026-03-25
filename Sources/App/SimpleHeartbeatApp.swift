@@ -1,4 +1,5 @@
 import SwiftUI
+import HeartbeatCore
 
 @main
 struct SimpleHeartbeatApp: App {

@@ -7,7 +7,17 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "SimpleHeartbeat",
-            path: "Sources"
-        )
+            dependencies: ["HeartbeatCore"],
+            path: "Sources/App"
+        ),
+        .target(
+            name: "HeartbeatCore",
+            path: "Sources/Core"
+        ),
+        .testTarget(
+            name: "HeartbeatCoreTests",
+            dependencies: ["HeartbeatCore"],
+            path: "Tests"
+        ),
     ]
 )

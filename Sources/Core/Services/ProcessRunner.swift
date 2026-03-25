@@ -1,13 +1,19 @@
 import Foundation
 
-struct ProcessResult {
-    let stdout: String
-    let stderr: String
-    let exitCode: Int32
+public struct ProcessResult {
+    public let stdout: String
+    public let stderr: String
+    public let exitCode: Int32
+
+    public init(stdout: String, stderr: String, exitCode: Int32) {
+        self.stdout = stdout
+        self.stderr = stderr
+        self.exitCode = exitCode
+    }
 }
 
-enum ProcessRunner {
-    static func findExecutable(_ name: String) -> String? {
+public enum ProcessRunner {
+    public static func findExecutable(_ name: String) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         process.arguments = [name]
@@ -50,7 +56,7 @@ enum ProcessRunner {
         return fallback
     }()
 
-    static func run(
+    public static func run(
         executable: String,
         arguments: [String],
         workingDirectory: String

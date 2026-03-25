@@ -1,4 +1,5 @@
 import SwiftUI
+import HeartbeatCore
 
 struct JobRowView: View {
     let job: HeartbeatJob

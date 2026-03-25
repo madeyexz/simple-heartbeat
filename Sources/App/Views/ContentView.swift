@@ -1,4 +1,5 @@
 import SwiftUI
+import HeartbeatCore
 
 struct ContentView: View {
     @EnvironmentObject var store: JobStore
