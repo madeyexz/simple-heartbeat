@@ -14,7 +14,19 @@ public struct ClaudeAgent: AgentProvider {
                 key: "model", label: "Model",
                 description: "Claude model to use",
                 type: .dropdown, defaultValue: "sonnet",
-                choices: ["sonnet", "opus", "haiku"]
+                choices: [
+                    "sonnet", "opus", "haiku",
+                    "sonnet[1m]", "opus[1m]",
+                    "opusplan",
+                    "claude-sonnet-4-6", "claude-opus-4-6",
+                    "claude-haiku-4-5",
+                ]
+            ),
+            AgentOption(
+                key: "effort", label: "Effort",
+                description: "Reasoning effort level",
+                type: .dropdown, defaultValue: "high",
+                choices: ["low", "medium", "high", "max"]
             ),
             AgentOption(
                 key: "permission-mode", label: "Permission Mode",
@@ -48,6 +60,9 @@ public struct ClaudeAgent: AgentProvider {
 
         if let model = options["model"], !model.isEmpty {
             args += ["--model", model]
+        }
+        if let effort = options["effort"], !effort.isEmpty, effort != "high" {
+            args += ["--effort", effort]
         }
         if let perm = options["permission-mode"], !perm.isEmpty, perm != "default" {
             args += ["--permission-mode", perm]
