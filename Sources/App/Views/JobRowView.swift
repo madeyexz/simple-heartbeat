@@ -20,7 +20,7 @@ struct JobRowView: View {
             }
 
             if showingRuns {
-                RunLogView(jobId: job.id)
+                RunLogView(job: job)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -74,12 +74,6 @@ struct JobRowView: View {
             .disabled(isRunning)
             .help("Run in background")
 
-            Button(action: { attachToSession() }) {
-                Image(systemName: "terminal")
-            }
-            .disabled(!isRunning)
-            .help(isRunning ? "Attach to running session" : "No active session")
-
             Button(action: { store.toggleEnabled(job) }) {
                 Image(systemName: job.isEnabled ? "pause.fill" : "play.circle")
             }
@@ -98,13 +92,6 @@ struct JobRowView: View {
         }
         .buttonStyle(.plain)
         .font(.caption)
-    }
-
-    private func attachToSession() {
-        let terminal = AppSettings.shared.preferredTerminal
-        Task {
-            try? await TerminalLauncher.attachToSession(job: job, openIn: terminal)
-        }
     }
 
     private var agentName: String {

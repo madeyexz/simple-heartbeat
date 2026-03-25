@@ -2,11 +2,11 @@ import SwiftUI
 import HeartbeatCore
 
 struct RunLogView: View {
-    let jobId: UUID
+    let job: HeartbeatJob
     @EnvironmentObject var store: JobStore
 
     private var runs: [JobRun] {
-        store.runsForJob(jobId)
+        store.runsForJob(job.id)
     }
 
     var body: some View {
@@ -50,15 +50,33 @@ struct RunLogView: View {
     @ViewBuilder
     private func runDetail(_ run: JobRun) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            if !run.output.isEmpty {
+            // Session attach button — shown when output mentions a session
+            if run.output.contains("session:") || run.status == .running {
+                HStack(spacing: 6) {
+                    if !run.output.isEmpty {
+                        Text(run.output)
+                            .font(.system(.caption2, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    Spacer()
+                    Button(action: { attachToSession() }) {
+                        Label("Open", systemImage: "terminal")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .tint(.blue)
+                }
+            } else if !run.output.isEmpty {
                 ScrollView {
-                    Text(run.output.suffix(2000)) // Show last 2k chars
+                    Text(run.output.suffix(2000))
                         .font(.system(.caption2, design: .monospaced))
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxHeight: 120)
             }
+
             if !run.error.isEmpty {
                 Text(run.error.suffix(1000))
                     .font(.system(.caption2, design: .monospaced))
@@ -72,6 +90,13 @@ struct RunLogView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func attachToSession() {
+        let terminal = AppSettings.shared.preferredTerminal
+        Task {
+            try? await TerminalLauncher.attachToSession(job: job, openIn: terminal)
+        }
     }
 
     @ViewBuilder
