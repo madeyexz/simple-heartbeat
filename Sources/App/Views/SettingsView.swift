@@ -16,6 +16,14 @@ struct SettingsView: View {
                     Toggle("Auto-dismiss popover on outside click", isOn: $settings.closePopoverOnOutsideClick)
                 }
 
+                Section("Terminal") {
+                    Picker("Open jobs in", selection: $settings.preferredTerminal) {
+                        ForEach(TerminalLauncher.availableTerminals()) { t in
+                            Text(t.displayName).tag(t)
+                        }
+                    }
+                }
+
                 Section("Startup") {
                     Toggle("Launch at login", isOn: $settings.launchAtLogin)
                 }

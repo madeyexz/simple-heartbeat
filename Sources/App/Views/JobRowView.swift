@@ -72,7 +72,12 @@ struct JobRowView: View {
                 Image(systemName: "play.fill")
             }
             .disabled(isRunning)
-            .help("Run now")
+            .help("Run in background")
+
+            Button(action: { openInTerminal() }) {
+                Image(systemName: "terminal")
+            }
+            .help("Open in terminal")
 
             Button(action: { store.toggleEnabled(job) }) {
                 Image(systemName: job.isEnabled ? "pause.fill" : "play.circle")
@@ -92,6 +97,14 @@ struct JobRowView: View {
         }
         .buttonStyle(.plain)
         .font(.caption)
+    }
+
+    private func openInTerminal() {
+        guard let agent = AgentRegistry.shared.agent(for: job.agentId) else { return }
+        let terminal = AppSettings.shared.preferredTerminal
+        Task {
+            try? await TerminalLauncher.launch(job: job, agent: agent, terminal: terminal)
+        }
     }
 
     private var agentName: String {
