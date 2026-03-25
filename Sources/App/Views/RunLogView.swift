@@ -35,15 +35,43 @@ struct RunLogView: View {
     private func runLabel(_ run: JobRun) -> some View {
         HStack(spacing: 6) {
             statusIcon(run.status)
-            Text(run.startedAt, style: .relative)
-            if let code = run.exitCode {
-                Text("exit \(code)")
-                    .foregroundStyle(.secondary)
-            }
+
             if run.status == .running {
+                // Running: show live elapsed time
+                Text(run.startedAt, style: .relative)
                 ProgressView()
                     .controlSize(.mini)
+            } else if let finished = run.finishedAt {
+                // Completed: show static duration
+                Text(formatDuration(from: run.startedAt, to: finished))
+                Text("ago")
+                    .foregroundStyle(.tertiary)
+                Text(finished, style: .relative)
+                    .foregroundStyle(.tertiary)
+            } else {
+                // No finish time: show when it started
+                Text(run.startedAt, style: .relative)
             }
+
+            if let code = run.exitCode, code != 0 {
+                Text("exit \(code)")
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func formatDuration(from start: Date, to end: Date) -> String {
+        let seconds = Int(end.timeIntervalSince(start))
+        if seconds < 60 {
+            return "\(seconds)s"
+        } else if seconds < 3600 {
+            let m = seconds / 60
+            let s = seconds % 60
+            return s > 0 ? "\(m)m \(s)s" : "\(m)m"
+        } else {
+            let h = seconds / 3600
+            let m = (seconds % 3600) / 60
+            return m > 0 ? "\(h)h \(m)m" : "\(h)h"
         }
     }
 
