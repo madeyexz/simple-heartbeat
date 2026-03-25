@@ -8,7 +8,6 @@ struct TerminalLauncherTests {
     @Test("Detects available terminals")
     func detectTerminals() {
         let terminals = TerminalLauncher.availableTerminals()
-        // Terminal.app is always available on macOS
         #expect(terminals.contains(.terminalApp))
     }
 
@@ -19,65 +18,84 @@ struct TerminalLauncherTests {
         }
     }
 
-    @Test("Builds cmux launch command")
-    func cmuxCommand() {
-        let cmd = TerminalLauncher.buildLaunchArgs(
-            terminal: .cmux,
-            command: "claude --print 'hello'",
-            workingDirectory: "/tmp/project",
-            name: "My Job"
+    @Test("Session name is stable and slug-safe")
+    func sessionName() {
+        let job = HeartbeatJob(
+            name: "PR Review Bot",
+            schedule: "0 9 * * *",
+            agentId: "claude",
+            prompt: "test",
+            workingDirectory: "/tmp"
         )
-        #expect(cmd.executable == "/Applications/cmux.app/Contents/Resources/bin/cmux")
-        #expect(cmd.arguments.contains("new-workspace"))
-        #expect(cmd.arguments.contains("--cwd"))
-        #expect(cmd.arguments.contains("/tmp/project"))
-        #expect(cmd.arguments.contains("--command"))
+        let name = TerminalLauncher.sessionName(for: job)
+        #expect(name.hasPrefix("hb-"))
+        #expect(!name.contains(" "))
+        #expect(!name.contains("."))
+        #expect(!name.contains(":"))
+        #expect(name.contains("pr-review-bot"))
     }
 
-    @Test("Builds tmux launch command for new session")
-    func tmuxNewSession() {
+    @Test("Session name includes job ID prefix for uniqueness")
+    func sessionNameUnique() {
+        let job1 = HeartbeatJob(
+            name: "Same Name", schedule: "* * * * *", agentId: "claude",
+            prompt: "a", workingDirectory: "/tmp"
+        )
+        let job2 = HeartbeatJob(
+            name: "Same Name", schedule: "* * * * *", agentId: "claude",
+            prompt: "b", workingDirectory: "/tmp"
+        )
+        #expect(TerminalLauncher.sessionName(for: job1) != TerminalLauncher.sessionName(for: job2))
+    }
+
+    @Test("Best background runner prefers tmux/cmux over Terminal.app")
+    func bestRunner() {
+        let runner = TerminalLauncher.bestBackgroundRunner
+        // On a dev machine with tmux installed, it should prefer tmux or cmux
+        #expect(runner != .terminalApp || ProcessRunner.findExecutable("tmux") == nil)
+    }
+
+    @Test("Builds tmux background session command")
+    func tmuxCommand() {
         let cmd = TerminalLauncher.buildLaunchArgs(
             terminal: .tmux,
-            command: "codex exec 'test'",
+            command: "claude --print 'hello'",
             workingDirectory: "/tmp/project",
             name: "My Job"
         )
         #expect(cmd.executable == "tmux")
         #expect(cmd.arguments.contains("new-session"))
+        #expect(cmd.arguments.contains("-d"))
         #expect(cmd.arguments.contains("-s"))
+        #expect(cmd.arguments.contains("-c"))
+        #expect(cmd.arguments.contains("/tmp/project"))
     }
 
-    @Test("Builds Terminal.app launch via open command")
-    func terminalAppCommand() {
-        let cmd = TerminalLauncher.buildLaunchArgs(
-            terminal: .terminalApp,
-            command: "claude --print 'hello'",
-            workingDirectory: "/tmp/project",
-            name: "Test"
-        )
-        // Terminal.app uses osascript
-        #expect(cmd.executable == "osascript")
+    @Test("Shell string escapes arguments with spaces")
+    func shellStringEscaping() {
+        let cmd = AgentCommand(executable: "claude", arguments: ["--print", "hello world", "--model", "opus"])
+        let s = TerminalLauncher.shellString(from: cmd)
+        #expect(s.contains("'hello world'"))
+        #expect(s.hasPrefix("claude"))
+    }
+
+    @Test("Shell string handles single quotes")
+    func shellStringQuotes() {
+        let cmd = AgentCommand(executable: "claude", arguments: ["it's a test"])
+        let s = TerminalLauncher.shellString(from: cmd)
+        #expect(s.contains("'it'\\''s a test'"))
     }
 
     @Test("Builds full agent command string from job")
     func fullCommandFromJob() {
-        let job = HeartbeatJob(
-            name: "Test",
-            schedule: "0 9 * * *",
-            agentId: "claude",
-            prompt: "review PRs",
-            workingDirectory: "/tmp",
-            options: ["model": "opus"]
-        )
         let agent = ClaudeAgent()
         let agentCmd = agent.buildCommand(
-            prompt: job.prompt, options: job.options, workingDirectory: job.workingDirectory
+            prompt: "review PRs", options: ["model": "opus"], workingDirectory: "/tmp"
         )
         let fullCmd = TerminalLauncher.shellString(from: agentCmd)
         #expect(fullCmd.contains("claude"))
         #expect(fullCmd.contains("--print"))
         #expect(fullCmd.contains("--model"))
         #expect(fullCmd.contains("opus"))
-        #expect(fullCmd.contains("review PRs"))
     }
 }

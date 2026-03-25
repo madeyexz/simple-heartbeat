@@ -74,10 +74,11 @@ struct JobRowView: View {
             .disabled(isRunning)
             .help("Run in background")
 
-            Button(action: { openInTerminal() }) {
+            Button(action: { attachToSession() }) {
                 Image(systemName: "terminal")
             }
-            .help("Open in terminal")
+            .disabled(!isRunning)
+            .help(isRunning ? "Attach to running session" : "No active session")
 
             Button(action: { store.toggleEnabled(job) }) {
                 Image(systemName: job.isEnabled ? "pause.fill" : "play.circle")
@@ -99,11 +100,10 @@ struct JobRowView: View {
         .font(.caption)
     }
 
-    private func openInTerminal() {
-        guard let agent = AgentRegistry.shared.agent(for: job.agentId) else { return }
+    private func attachToSession() {
         let terminal = AppSettings.shared.preferredTerminal
         Task {
-            try? await TerminalLauncher.launch(job: job, agent: agent, terminal: terminal)
+            try? await TerminalLauncher.attachToSession(job: job, openIn: terminal)
         }
     }
 
