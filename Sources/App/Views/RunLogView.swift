@@ -37,19 +37,21 @@ struct RunLogView: View {
             statusIcon(run.status)
 
             if run.status == .running {
-                // Running: show live elapsed time
                 Text(run.startedAt, style: .relative)
                 ProgressView()
                     .controlSize(.mini)
             } else if let finished = run.finishedAt {
-                // Completed: show static duration
-                Text(formatDuration(from: run.startedAt, to: finished))
+                let duration = Int(finished.timeIntervalSince(run.startedAt))
+                if duration > 2 {
+                    // Real duration (direct process execution)
+                    Text(formatDuration(duration))
+                }
+                // When it ran
+                Text(run.startedAt, style: .relative)
+                    .foregroundStyle(.secondary)
                 Text("ago")
                     .foregroundStyle(.tertiary)
-                Text(finished, style: .relative)
-                    .foregroundStyle(.tertiary)
             } else {
-                // No finish time: show when it started
                 Text(run.startedAt, style: .relative)
             }
 
@@ -60,8 +62,7 @@ struct RunLogView: View {
         }
     }
 
-    private func formatDuration(from start: Date, to end: Date) -> String {
-        let seconds = Int(end.timeIntervalSince(start))
+    private func formatDuration(_ seconds: Int) -> String {
         if seconds < 60 {
             return "\(seconds)s"
         } else if seconds < 3600 {
@@ -75,17 +76,20 @@ struct RunLogView: View {
         }
     }
 
+    /// Is this the most recent run for this job?
+    private func isLatestRun(_ run: JobRun) -> Bool {
+        runs.first?.id == run.id
+    }
+
     @ViewBuilder
     private func runDetail(_ run: JobRun) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            // Session attach button — shown when output mentions a session
-            if run.output.contains("session:") || run.status == .running {
+            // Session attach button — only on the latest run with a session
+            if run.output.contains("session:"), isLatestRun(run) {
                 HStack(spacing: 6) {
-                    if !run.output.isEmpty {
-                        Text(run.output)
-                            .font(.system(.caption2, design: .monospaced))
-                            .textSelection(.enabled)
-                    }
+                    Text(run.output)
+                        .font(.system(.caption2, design: .monospaced))
+                        .textSelection(.enabled)
                     Spacer()
                     Button(action: { attachToSession() }) {
                         Label("Open", systemImage: "terminal")
