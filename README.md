@@ -122,21 +122,78 @@ You need at least one of these CLI tools installed:
 
 Three layers — UI, Core, and Agents — each independently testable.
 
-[![Architecture diagram](https://excalidraw.com/og/pEKr77M81u4MEZwuDDq-v)](https://excalidraw.com/#json=pEKr77M81u4MEZwuDDq-v,gv-iPIbVluy-7UM9Nh3vFQ)
+```mermaid
+graph LR
+    subgraph UI["UI Layer"]
+        MB["Menu Bar ♥"] --> PO["Popover"]
+        PO --> NJ["New Job"]
+        PO --> IM["Import"]
+        PO --> ST["Settings"]
+    end
 
-> [Open architecture diagram in Excalidraw](https://excalidraw.com/#json=pEKr77M81u4MEZwuDDq-v,gv-iPIbVluy-7UM9Nh3vFQ)
+    subgraph Core["Core Layer"]
+        JS["Job Store<br/><i>jobs.json</i>"]
+        SC["Scheduler<br/><i>60s tick</i>"]
+        CP["Cron Parser"]
+        RR["RRULE Converter"]
+        AR["Agent Registry"]
+        PR["Process Runner"]
+    end
+
+    subgraph Agents["Agent Layer <i>(extensible)</i>"]
+        CC["Claude Code<br/>sonnet / opus / haiku"]
+        CX["Codex<br/>gpt-5.4 / o3"]
+        FU["Your Agent<br/><i>AgentProvider</i>"]:::dashed
+    end
+
+    PO --> JS
+    JS --> SC
+    SC --> CP
+    IM --> RR
+    SC --> AR
+    AR --> CC
+    AR --> CX
+    AR -.-> FU
+    AR --> PR
+    PR --> CLI1["claude CLI"]
+    PR --> CLI2["codex CLI"]
+
+    classDef dashed stroke-dasharray: 5 5
+```
 
 - **UI Layer** — SwiftUI views inside an `NSPopover`, attached to an `NSStatusItem`. Sheets for creating/editing jobs, importing automations, and settings.
-- **Core Layer** — `JobStore` persists to JSON, `JobScheduler` ticks every 60 seconds and matches cron expressions, `AgentRegistry` looks up the right agent, `ProcessRunner` spawns the CLI process.
+- **Core Layer** — `JobStore` persists to JSON, `JobScheduler` ticks every 60s and matches cron expressions, `AgentRegistry` looks up the right agent, `ProcessRunner` spawns the CLI process.
 - **Agent Layer** — Each agent conforms to `AgentProvider` protocol. Provides available options (model, effort, permissions) and builds the CLI command.
 
 ### Job Lifecycle
 
 From creation to execution — two entry points converge on a single `HeartbeatJob` model.
 
-[![Job lifecycle flow](https://excalidraw.com/og/H9_4chZptifC3pwiKOORZ)](https://excalidraw.com/#json=H9_4chZptifC3pwiKOORZ,raKl-kodNsHZwNWzKcQq9g)
+```mermaid
+flowchart TD
+    subgraph Create["1. Create or Import"]
+        MC["Manual Create<br/>(schedule picker)"]
+        CI["Codex Import<br/>~/.codex/automations/*.toml"]
+        CLI["Claude Import<br/>scheduled_tasks.json"]
+    end
 
-> [Open flow diagram in Excalidraw](https://excalidraw.com/#json=H9_4chZptifC3pwiKOORZ,raKl-kodNsHZwNWzKcQq9g)
+    CI --> TOML["Parse TOML"] --> RRULE["RRULE → Cron"]
+    CLI --> JSON["Parse JSON"]
+
+    MC --> HB["HeartbeatJob<br/><b>name + cron + agent + prompt</b>"]
+    RRULE --> HB
+    JSON --> HB
+
+    HB --> STORE["2. Job Store<br/><i>jobs.json</i>"]
+    STORE --> SCHED["3. Scheduler<br/><i>60s tick</i>"]
+    SCHED --> MATCH{"Cron<br/>match?"}
+    MATCH -->|yes| REG["4. Agent Registry<br/>lookup agent"]
+    REG --> BUILD["Build Command<br/>(args + flags)"]
+    BUILD --> PROC["Process Runner<br/>(async spawn)"]
+    PROC --> C_CLI["claude --print ..."]
+    PROC --> X_CLI["codex exec ..."]
+    PROC --> LOG["5. Run Log<br/>stdout / stderr"]
+```
 
 1. **Create** — manually via the schedule picker, or import from `~/.codex/automations/` (TOML + RRULE) or `~/.claude/scheduled_tasks.json`
 2. **Store** — persisted to `~/Library/Application Support/SimpleHeartbeat/jobs.json`
