@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var store: JobStore
     @EnvironmentObject var scheduler: JobScheduler
     @State private var showingNewJob = false
+    @State private var showingImport = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,9 @@ struct ContentView: View {
         .sheet(isPresented: $showingNewJob) {
             NewJobView()
         }
+        .sheet(isPresented: $showingImport) {
+            ImportView()
+        }
     }
 
     private var header: some View {
@@ -34,6 +38,14 @@ struct ContentView: View {
             Text("Simple Heartbeat")
                 .font(.headline)
             Spacer()
+            Button(action: { showingImport = true }) {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.callout)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.blue)
+            .help("Import from Codex / Claude Code")
+
             Button(action: { showingNewJob = true }) {
                 Image(systemName: "plus.circle.fill")
                     .font(.title3)
@@ -56,11 +68,18 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
-            Button("New Heartbeat") {
-                showingNewJob = true
+            HStack(spacing: 12) {
+                Button("Import") {
+                    showingImport = true
+                }
+                .buttonStyle(.bordered)
+
+                Button("New Heartbeat") {
+                    showingNewJob = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
