@@ -6,18 +6,21 @@ struct SimpleHeartbeatApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     var body: some Scene {
-        // Menu bar apps need at least one scene, but we manage the window ourselves
-        Settings { EmptyView() }
+        Settings {
+            SettingsView()
+                .environmentObject(delegate.store)
+        }
     }
 }
 
-/// Uses NSStatusItem + NSWindow instead of MenuBarExtra to avoid the
-/// popover-dismisses-on-click bug that plagues MenuBarExtra(.window).
+/// NSStatusItem + NSPopover for proper menu bar app behavior:
+/// - Popover stays open when interacting inside (buttons, sheets, etc.)
+/// - Popover dismisses when clicking outside
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var statusItem: NSStatusItem!
-    private var window: NSWindow!
-    private let store = JobStore()
+    private var popover: NSPopover!
+    let store = JobStore()
     private let scheduler = JobScheduler()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -31,44 +34,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 systemSymbolName: "heart.fill",
                 accessibilityDescription: "Simple Heartbeat"
             )
-            button.action = #selector(toggleWindow)
+            button.action = #selector(togglePopover)
             button.target = self
         }
 
-        // Floating window (created once, toggled on click)
+        // Popover
         let contentView = ContentView()
             .environmentObject(store)
             .environmentObject(scheduler)
 
-        window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 480),
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = NSHostingView(rootView: contentView)
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
-        window.level = .floating
-        window.isReleasedWhenClosed = false
-        window.animationBehavior = .utilityWindow
+        popover = NSPopover()
+        popover.contentSize = NSSize(width: 420, height: 480)
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentViewController = NSHostingController(rootView: contentView)
     }
 
-    @objc private func toggleWindow() {
-        if window.isVisible {
-            window.close()
+    @objc private func togglePopover() {
+        guard let button = statusItem.button else { return }
+
+        if popover.isShown {
+            popover.performClose(nil)
         } else {
-            positionNearStatusItem()
-            window.makeKeyAndOrderFront(nil)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
         }
-    }
-
-    private func positionNearStatusItem() {
-        guard let buttonFrame = statusItem.button?.window?.frame else { return }
-        let x = buttonFrame.midX - window.frame.width / 2
-        let y = buttonFrame.minY - window.frame.height
-        window.setFrameOrigin(NSPoint(x: x, y: y))
     }
 }

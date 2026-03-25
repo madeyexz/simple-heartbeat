@@ -14,21 +14,82 @@ struct NewJobView: View {
     @State private var isEnabled: Bool
     @FocusState private var focusedField: Field?
 
+    // User-friendly schedule state
+    @State private var frequency: ScheduleFrequency
+    @State private var intervalMinutes: Int
+    @State private var intervalHours: Int
+    @State private var dailyHour: Int
+    @State private var dailyMinute: Int
+    @State private var weeklyDay: Int // 0=Sun..6=Sat
+    @State private var showAdvancedCron = false
+
     private let editing: HeartbeatJob?
 
     private enum Field: Hashable {
         case name, prompt, schedule
     }
 
+    enum ScheduleFrequency: String, CaseIterable, Identifiable {
+        case minutes = "Every N Minutes"
+        case hours = "Every N Hours"
+        case daily = "Daily"
+        case weekly = "Weekly"
+        case custom = "Custom (cron)"
+
+        var id: String { rawValue }
+    }
+
     init(editing: HeartbeatJob? = nil) {
         self.editing = editing
+        let sched = editing?.schedule ?? "*/30 * * * *"
         _name = State(initialValue: editing?.name ?? "")
-        _schedule = State(initialValue: editing?.schedule ?? "*/30 * * * *")
+        _schedule = State(initialValue: sched)
         _agentId = State(initialValue: editing?.agentId ?? AgentRegistry.shared.agentIds.first ?? "claude")
         _prompt = State(initialValue: editing?.prompt ?? "")
         _workingDirectory = State(initialValue: editing?.workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path)
         _options = State(initialValue: editing?.options ?? [:])
         _isEnabled = State(initialValue: editing?.isEnabled ?? true)
+
+        // Parse existing cron into user-friendly state
+        let parsed = Self.parseCron(sched)
+        _frequency = State(initialValue: parsed.freq)
+        _intervalMinutes = State(initialValue: parsed.intervalMin)
+        _intervalHours = State(initialValue: parsed.intervalHr)
+        _dailyHour = State(initialValue: parsed.hour)
+        _dailyMinute = State(initialValue: parsed.minute)
+        _weeklyDay = State(initialValue: parsed.dow)
+        _showAdvancedCron = State(initialValue: parsed.freq == .custom)
+    }
+
+    private static func parseCron(_ cron: String) -> (freq: ScheduleFrequency, intervalMin: Int, intervalHr: Int, hour: Int, minute: Int, dow: Int) {
+        let parts = cron.split(separator: " ").map(String.init)
+        guard parts.count == 5 else { return (.custom, 30, 1, 9, 0, 1) }
+
+        // */N * * * * → every N minutes
+        if parts[0].hasPrefix("*/"), parts[1...4].allSatisfy({ $0 == "*" }),
+           let n = Int(parts[0].dropFirst(2)) {
+            return (.minutes, n, 1, 9, 0, 1)
+        }
+        // M */N * * * → every N hours
+        if parts[1].hasPrefix("*/"), parts[2...4].allSatisfy({ $0 == "*" }),
+           let m = Int(parts[0]), let n = Int(parts[1].dropFirst(2)) {
+            return (.hours, 30, n, 9, m, 1)
+        }
+        // M H * * dow → weekly
+        if parts[2] == "*", parts[3] == "*", let dow = Int(parts[4]),
+           let h = Int(parts[1]), let m = Int(parts[0]) {
+            return (.weekly, 30, 1, h, m, dow)
+        }
+        // M H * * * → daily
+        if parts[2...4].allSatisfy({ $0 == "*" }),
+           let h = Int(parts[1]), let m = Int(parts[0]) {
+            return (.daily, 30, 1, h, m, 1)
+        }
+        // Hourly at :M
+        if parts[1...4].allSatisfy({ $0 == "*" }), let m = Int(parts[0]) {
+            return (.hours, 30, 1, 9, m, 1)
+        }
+        return (.custom, 30, 1, 9, 0, 1)
     }
 
     var body: some View {
@@ -145,46 +206,148 @@ struct NewJobView: View {
 
     private var scheduleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Schedule")
-
-            // Quick presets
-            HStack(spacing: 6) {
-                ForEach(schedulePresets, id: \.cron) { preset in
-                    Button(preset.label) {
-                        schedule = preset.cron
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(schedule == preset.cron ? .red : nil)
-                    .controlSize(.small)
-                }
-            }
-
             HStack {
-                TextField("Cron", text: $schedule)
-                    .font(.system(.body, design: .monospaced))
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 160)
-
-                if let cron = CronExpression(from: schedule) {
-                    Label(cron.humanReadable, systemImage: "clock")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                } else if !schedule.isEmpty {
-                    Label("Invalid", systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-
+                sectionLabel("Schedule")
                 Spacer()
-
                 Toggle("Enabled", isOn: $isEnabled)
                     .toggleStyle(.switch)
                     .controlSize(.small)
             }
 
-            Text("min  hour  day  month  weekday  — use * for any, */N for every N")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            Picker("Frequency", selection: $frequency) {
+                ForEach(ScheduleFrequency.allCases) { f in
+                    Text(f.rawValue).tag(f)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: frequency) { _, _ in rebuildCron() }
+
+            // Frequency-specific controls
+            switch frequency {
+            case .minutes:
+                HStack {
+                    Text("Every")
+                    Picker("", selection: $intervalMinutes) {
+                        ForEach([1, 2, 5, 10, 15, 20, 30], id: \.self) { n in
+                            Text("\(n)").tag(n)
+                        }
+                    }
+                    .frame(width: 70)
+                    .onChange(of: intervalMinutes) { _, _ in rebuildCron() }
+                    Text("minutes")
+                }
+                .font(.callout)
+
+            case .hours:
+                HStack {
+                    Text("Every")
+                    Picker("", selection: $intervalHours) {
+                        ForEach([1, 2, 3, 4, 6, 8, 12], id: \.self) { n in
+                            Text("\(n)").tag(n)
+                        }
+                    }
+                    .frame(width: 70)
+                    .onChange(of: intervalHours) { _, _ in rebuildCron() }
+                    Text("hours at minute")
+                    Picker("", selection: $dailyMinute) {
+                        ForEach([0, 15, 30, 45], id: \.self) { m in
+                            Text(":\(String(format: "%02d", m))").tag(m)
+                        }
+                    }
+                    .frame(width: 70)
+                    .onChange(of: dailyMinute) { _, _ in rebuildCron() }
+                }
+                .font(.callout)
+
+            case .daily:
+                HStack {
+                    Text("Every day at")
+                    timePicker
+                }
+                .font(.callout)
+
+            case .weekly:
+                HStack {
+                    Text("Every")
+                    Picker("", selection: $weeklyDay) {
+                        ForEach(Array(dayNames.enumerated()), id: \.offset) { i, name in
+                            Text(name).tag(i)
+                        }
+                    }
+                    .frame(width: 110)
+                    .onChange(of: weeklyDay) { _, _ in rebuildCron() }
+                    Text("at")
+                    timePicker
+                }
+                .font(.callout)
+
+            case .custom:
+                HStack {
+                    TextField("Cron expression", text: $schedule)
+                        .font(.system(.body, design: .monospaced))
+                        .textFieldStyle(.roundedBorder)
+                    if let cron = CronExpression(from: schedule) {
+                        Label(cron.humanReadable, systemImage: "clock")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    } else if !schedule.isEmpty {
+                        Label("Invalid", systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                Text("Format: min hour day month weekday")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            // Preview
+            if frequency != .custom, let cron = CronExpression(from: schedule) {
+                Label(cron.humanReadable, systemImage: "clock")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            }
+        }
+    }
+
+    private var timePicker: some View {
+        HStack(spacing: 2) {
+            Picker("", selection: $dailyHour) {
+                ForEach(0..<24, id: \.self) { h in
+                    Text(String(format: "%02d", h)).tag(h)
+                }
+            }
+            .frame(width: 60)
+            .onChange(of: dailyHour) { _, _ in rebuildCron() }
+            Text(":")
+            Picker("", selection: $dailyMinute) {
+                ForEach([0, 5, 10, 15, 20, 30, 45], id: \.self) { m in
+                    Text(String(format: "%02d", m)).tag(m)
+                }
+            }
+            .frame(width: 60)
+            .onChange(of: dailyMinute) { _, _ in rebuildCron() }
+        }
+    }
+
+    private var dayNames: [String] {
+        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    }
+
+    private func rebuildCron() {
+        switch frequency {
+        case .minutes:
+            schedule = "*/\(intervalMinutes) * * * *"
+        case .hours:
+            schedule = intervalHours == 1
+                ? "\(dailyMinute) * * * *"
+                : "\(dailyMinute) */\(intervalHours) * * *"
+        case .daily:
+            schedule = "\(dailyMinute) \(dailyHour) * * *"
+        case .weekly:
+            schedule = "\(dailyMinute) \(dailyHour) * * \(weeklyDay)"
+        case .custom:
+            break // User edits directly
         }
     }
 
@@ -270,16 +433,6 @@ struct NewJobView: View {
         Text(text)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary)
-    }
-
-    private var schedulePresets: [(label: String, cron: String)] {
-        [
-            ("5 min", "*/5 * * * *"),
-            ("30 min", "*/30 * * * *"),
-            ("Hourly", "0 * * * *"),
-            ("Daily 9am", "0 9 * * *"),
-            ("Weekly Mon", "0 9 * * 1"),
-        ]
     }
 
     @ViewBuilder

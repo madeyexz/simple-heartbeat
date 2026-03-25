@@ -93,6 +93,27 @@ struct AgentTests {
         #expect(cmd.arguments.last == "hello")
     }
 
+    @Test("Codex includes reasoning effort via config override")
+    func codexReasoningEffort() {
+        let codex = CodexAgent()
+        let cmd = codex.buildCommand(
+            prompt: "test",
+            options: ["reasoning-effort": "high"],
+            workingDirectory: "/tmp"
+        )
+        #expect(cmd.arguments.contains("-c"))
+        // Should contain a config value with reasoning_effort
+        let configIdx = cmd.arguments.firstIndex(of: "-c")!
+        #expect(cmd.arguments[configIdx + 1].contains("reasoning_effort"))
+    }
+
+    @Test("Codex exposes reasoning effort option")
+    func codexHasReasoningEffort() {
+        let codex = CodexAgent()
+        let keys = codex.availableOptions.map(\.key)
+        #expect(keys.contains("reasoning-effort"))
+    }
+
     @Test("Codex includes approval and sandbox flags")
     func codexFlags() {
         let codex = CodexAgent()

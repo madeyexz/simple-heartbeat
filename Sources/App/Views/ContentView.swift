@@ -6,6 +6,7 @@ struct ContentView: View {
     @EnvironmentObject var scheduler: JobScheduler
     @State private var showingNewJob = false
     @State private var showingImport = false
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +53,7 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.red)
+            .help("New heartbeat")
         }
         .padding()
     }
@@ -105,6 +107,14 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
+
+            Button(action: { openSettings() }) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Settings (Cmd+,)")
+
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }

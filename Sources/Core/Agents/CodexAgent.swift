@@ -17,6 +17,12 @@ public struct CodexAgent: AgentProvider {
                 choices: []
             ),
             AgentOption(
+                key: "reasoning-effort", label: "Reasoning Effort",
+                description: "How much reasoning to apply",
+                type: .dropdown, defaultValue: "high",
+                choices: ["low", "medium", "high"]
+            ),
+            AgentOption(
                 key: "approval", label: "Approval Policy",
                 description: "When to ask for human approval",
                 type: .dropdown, defaultValue: "never",
@@ -54,6 +60,9 @@ public struct CodexAgent: AgentProvider {
         }
         if let sandbox = options["sandbox"], !sandbox.isEmpty {
             args += ["-s", sandbox]
+        }
+        if let effort = options["reasoning-effort"], !effort.isEmpty {
+            args += ["-c", "reasoning_effort=\"\(effort)\""]
         }
         if options["full-auto"] == "true" {
             args.append("--full-auto")
