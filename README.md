@@ -5,10 +5,21 @@
   <img src="https://img.shields.io/badge/platform-macOS_14+-blue" alt="macOS 14+" />
   <img src="https://img.shields.io/badge/swift-5.9-orange" alt="Swift 5.9" />
   <img src="https://img.shields.io/badge/agents-Claude_Code_+_Codex-green" alt="Agents" />
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT" />
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#how-it-works">How It Works</a> · <a href="#adding-agents">Adding Agents</a>
+  <a href="#features">Features</a> · <a href="#install">Install</a> · <a href="#how-it-works">How It Works</a> · <a href="#adding-agents">Adding Agents</a> · <a href="#tests">Tests</a>
+</p>
+
+<p align="center">
+  <a href="https://excalidraw.com/#json=R62I6MFCD4IQkqkduSZiv,yW3wzDigqraxnDBO_RW0vg">
+    <img src="docs/diagrams/hero.png" alt="simple-heartbeat overview" width="900" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://excalidraw.com/#json=R62I6MFCD4IQkqkduSZiv,yW3wzDigqraxnDBO_RW0vg">View interactive diagram</a>
 </p>
 
 ---
@@ -26,11 +37,9 @@ Set up a cron job that reviews your PRs every morning, runs a growth loop daily,
 Lives in your menu bar with a heart icon. Click to open, click outside to dismiss. No dock icon, no window clutter.
 </td>
 <td width="60%">
-
-```
-♥ → popover dashboard → create / import / run jobs
-```
-
+<a href="https://excalidraw.com/#json=BCU-qKU9YvClwhSm6U5T_,RksuiNFf52CFlKWWTj0SHA">
+<img src="docs/diagrams/menu-bar.png" alt="Menu bar native" width="100%" />
+</a>
 </td>
 </tr>
 <tr>
@@ -39,12 +48,9 @@ Lives in your menu bar with a heart icon. Click to open, click outside to dismis
 Ships with Claude Code and Codex. Normalized agent layer — add new agents by conforming to one protocol.
 </td>
 <td width="60%">
-
-| Agent | Models | Mode |
-|-------|--------|------|
-| **Claude Code** | sonnet, opus, haiku, opus[1m], opusplan | `claude --print` |
-| **Codex** | gpt-5.4, o3, o4-mini | `codex exec` |
-
+<a href="https://excalidraw.com/#json=R94L3XXveyFKSiIUzx_0R,A0Y9r9hLKropxPEf09fv5A">
+<img src="docs/diagrams/multi-agent.png" alt="Multi-agent support" width="100%" />
+</a>
 </td>
 </tr>
 <tr>
@@ -53,13 +59,9 @@ Ships with Claude Code and Codex. Normalized agent layer — add new agents by c
 No cron syntax needed. Pick "Every 30 minutes", "Daily at 9am", or "Weekly on Monday" from dropdowns. Power users can switch to raw cron.
 </td>
 <td width="60%">
-
-```
-Every N Minutes | Every N Hours | Daily | Weekly | Custom (cron)
-     ↓
-   [30] minutes          Every day at [09]:[00]
-```
-
+<a href="https://excalidraw.com/#json=9UTDA49t6RrGiHYp3f3Qz,8ZK8UWfc0Y-h-xwk9Ibl1w">
+<img src="docs/diagrams/schedule-picker.png" alt="Visual schedule picker" width="100%" />
+</a>
 </td>
 </tr>
 <tr>
@@ -68,31 +70,17 @@ Every N Minutes | Every N Hours | Daily | Weekly | Custom (cron)
 One-click import of existing automations. Reads Codex TOML files and Claude Code scheduled tasks. Converts RRULE to cron automatically.
 </td>
 <td width="60%">
-
-```
-~/.codex/automations/*/automation.toml  → parse TOML → RRULE→cron
-~/.claude/scheduled_tasks.json          → parse JSON → HeartbeatJob
-```
-
-</td>
-</tr>
-<tr>
-<td width="40%" valign="middle">
-<h3>Settings (Cmd+,)</h3>
-Show/hide menu bar icon, launch at login, reveal data directory. Standard macOS settings window.
-</td>
-<td width="60%">
-
-```
-Appearance:  [x] Show menu bar icon
-             [x] Auto-dismiss popover
-Startup:     [ ] Launch at login
-Data:        ~/Library/Application Support/SimpleHeartbeat/
-```
-
+<a href="https://excalidraw.com/#json=_bQPr0Wp5pLuLmoVZ7dTJ,MxHBme9wW4V_9Q8NYncA6Q">
+<img src="docs/diagrams/import.png" alt="Import automations" width="100%" />
+</a>
 </td>
 </tr>
 </table>
+
+- **Background execution** — Jobs run in background tmux/cmux sessions with full stdout/stderr capture
+- **Run log** — View execution history, status, and duration for every job
+- **Native macOS app** — Built with Swift and SwiftUI, not Electron. Fast startup, low memory.
+- **Settings (Cmd+,)** — Show/hide menu bar icon, launch at login, reveal data directory
 
 ## Install
 
@@ -118,48 +106,13 @@ You need at least one of these CLI tools installed:
 
 ## How It Works
 
-### Architecture
-
 Three layers — UI, Core, and Agents — each independently testable.
 
-```mermaid
-graph LR
-    subgraph UI["UI Layer"]
-        MB["Menu Bar ♥"] --> PO["Popover"]
-        PO --> NJ["New Job"]
-        PO --> IM["Import"]
-        PO --> ST["Settings"]
-    end
-
-    subgraph Core["Core Layer"]
-        JS["Job Store<br/><i>jobs.json</i>"]
-        SC["Scheduler<br/><i>60s tick</i>"]
-        CP["Cron Parser"]
-        RR["RRULE Converter"]
-        AR["Agent Registry"]
-        PR["Process Runner"]
-    end
-
-    subgraph Agents["Agent Layer <i>(extensible)</i>"]
-        CC["Claude Code<br/>sonnet / opus / haiku"]
-        CX["Codex<br/>gpt-5.4 / o3"]
-        FU["Your Agent<br/><i>AgentProvider</i>"]:::dashed
-    end
-
-    PO --> JS
-    JS --> SC
-    SC --> CP
-    IM --> RR
-    SC --> AR
-    AR --> CC
-    AR --> CX
-    AR -.-> FU
-    AR --> PR
-    PR --> CLI1["claude CLI"]
-    PR --> CLI2["codex CLI"]
-
-    classDef dashed stroke-dasharray: 5 5
-```
+<p align="center">
+  <a href="https://excalidraw.com/#json=MTsAqdDlYoMdQGnPyaQrV,mPoDPnIFMNAUSS7sxw5k7g">
+    <img src="docs/diagrams/architecture.png" alt="Architecture diagram" width="900" />
+  </a>
+</p>
 
 - **UI Layer** — SwiftUI views inside an `NSPopover`, attached to an `NSStatusItem`. Sheets for creating/editing jobs, importing automations, and settings.
 - **Core Layer** — `JobStore` persists to JSON, `JobScheduler` ticks every 60s and matches cron expressions, `AgentRegistry` looks up the right agent, `ProcessRunner` spawns the CLI process.
@@ -169,31 +122,11 @@ graph LR
 
 From creation to execution — two entry points converge on a single `HeartbeatJob` model.
 
-```mermaid
-flowchart TD
-    subgraph Create["1. Create or Import"]
-        MC["Manual Create<br/>(schedule picker)"]
-        CI["Codex Import<br/>~/.codex/automations/*.toml"]
-        CLI["Claude Import<br/>scheduled_tasks.json"]
-    end
-
-    CI --> TOML["Parse TOML"] --> RRULE["RRULE → Cron"]
-    CLI --> JSON["Parse JSON"]
-
-    MC --> HB["HeartbeatJob<br/><b>name + cron + agent + prompt</b>"]
-    RRULE --> HB
-    JSON --> HB
-
-    HB --> STORE["2. Job Store<br/><i>jobs.json</i>"]
-    STORE --> SCHED["3. Scheduler<br/><i>60s tick</i>"]
-    SCHED --> MATCH{"Cron<br/>match?"}
-    MATCH -->|yes| REG["4. Agent Registry<br/>lookup agent"]
-    REG --> BUILD["Build Command<br/>(args + flags)"]
-    BUILD --> PROC["Process Runner<br/>(async spawn)"]
-    PROC --> C_CLI["claude --print ..."]
-    PROC --> X_CLI["codex exec ..."]
-    PROC --> LOG["5. Run Log<br/>stdout / stderr"]
-```
+<p align="center">
+  <a href="https://excalidraw.com/#json=bH3jDW1Yc04yKwSqgt_LT,s4b-lMUQP7A51tR3hxfyPg">
+    <img src="docs/diagrams/lifecycle.png" alt="Job lifecycle diagram" width="900" />
+  </a>
+</p>
 
 1. **Create** — manually via the schedule picker, or import from `~/.codex/automations/` (TOML + RRULE) or `~/.claude/scheduled_tasks.json`
 2. **Store** — persisted to `~/Library/Application Support/SimpleHeartbeat/jobs.json`
@@ -289,6 +222,11 @@ swift test
 I run Claude Code and Codex for recurring tasks — reviewing PRs, running growth loops, checking deployments. Both tools have their own automation systems (Claude Code's `CronCreate` with durable tasks, Codex's TOML-based automations with RRULE schedules), but they're siloed. I wanted one place to see all my scheduled agent jobs, import existing ones, and create new ones without remembering cron syntax or RRULE format.
 
 Simple Heartbeat is a ~2000-line Swift app that lives in the menu bar. It's not a platform or an orchestrator — just a scheduler with a nice UI that spawns CLI processes. The agent abstraction means I can add new backends without touching the scheduler or UI code.
+
+## Contributing
+
+- Create and participate in [GitHub issues](https://github.com/madeyexz/simple-heartbeat/issues) and [discussions](https://github.com/madeyexz/simple-heartbeat/discussions)
+- Let us know what you're building with simple-heartbeat
 
 ## License
 
